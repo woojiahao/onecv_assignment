@@ -2,6 +2,9 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"github.com/woojiahao/onecv_assignment/internal/utility"
+	"strings"
 )
 
 type Teacher struct {
@@ -36,4 +39,19 @@ func (db *Database) RegisterStudents(teacherEmail string, studentEmails []string
 	}
 
 	return nil
+}
+
+// TODO: Return string of names instead?
+func (db *Database) GetStudents(teacherEmail string) ([]Student, error) {
+	rows, err := db.Database.QueryContext(context.TODO(), `SELECT student_email FROM TeacherStudents WHERE teacher_email = ?;`, teacherEmail)
+	if err != nil {
+		return nil, DatabaseError
+	}
+	var students []Student
+	for rows.Next() {
+		var student Student
+		err = rows.Scan(&student.Email)
+		students = append(students, student)
+	}
+	return students, nil
 }
