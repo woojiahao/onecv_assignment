@@ -64,3 +64,29 @@ func (db *Database) Suspend(studentEmail string) error {
 
 	return nil
 }
+
+func (db *Database) GetNotifiableStudents(teacherEmail, notification string) ([]Student, error) {
+	mentions := utility.GetMentionsFromNotification(notification)
+	rows, err := db.Database.QueryContext(
+		context.TODO(),
+		`SELECT Students.email, Students.is_suspended
+		FROM Students 
+			JOIN TeacherStudents ON student_email = email 
+		WHERE (teacher_email = ? OR student_email IN ?) AND NOT is_suspended
+		`,
+		teacherEmail,
+		mentions)
+	if err != nil {
+		return nil, DatabaseError
+	}
+	var students []Student
+	for rows.Next() {
+		var student Student
+		err = rows.Scan(&student.Email, &student.IsSuspended)
+		if err != nil {
+			return nil, DatabaseError
+		}
+		students = append(students, student)
+	}
+	return students, nil
+}
