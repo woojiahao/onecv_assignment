@@ -45,10 +45,13 @@ type Database struct {
 }
 
 func Connect(c *Configuration) *Database {
-	connStr := fmt.Sprintf("mysql://%s:%s@%s:%d/%s", c.Username, c.Password, c.Host, c.Port, c.Name)
+	connStr := fmt.Sprintf("mysql://%s:%s@tcp(%s:%d)/%s?ssl-mode=disabled", c.Username, c.Password, c.Host, c.Port, c.Name)
+	if c.Password == "" {
+		connStr = fmt.Sprintf("mysql://%s@tcp(%s:%d)/%s?ssl-mode=disabled", c.Username, c.Host, c.Port, c.Name)
+	}
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
-		log.Fatalf("Unable to connect to database")
+		log.Fatalf("Unable to connect to database due to %s\n", err)
 	}
 
 	return &Database{c, db}
