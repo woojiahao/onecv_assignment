@@ -55,3 +55,12 @@ func (db *Database) GetStudents(teacherEmail string) ([]Student, error) {
 	}
 	return students, nil
 }
+
+func (db *Database) Suspend(studentEmail string) error {
+	row := db.Database.QueryRowContext(context.TODO(), `UPDATE Students SET is_suspended = TRUE WHERE Students.email = ? RETURNING *;`, studentEmail)
+	if row.Scan() != nil {
+		return NoStudentFound
+	}
+
+	return nil
+}
