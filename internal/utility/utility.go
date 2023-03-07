@@ -27,3 +27,11 @@ func Map[T any, R any](input []T, transform func(T) R) []R {
 	}
 	return result
 }
+
+func Repeat(input string, times int, delimiter string) string {
+	var result []string
+	for i := 0; i < times; i++ {
+		result = append(result, input)
+	}
+	return strings.Join(result, delimiter)
+}
