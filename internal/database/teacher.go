@@ -45,7 +45,7 @@ func (db *Database) GetStudents(teacherEmails ...string) ([]Student, error) {
 	for i := 0; i < len(teacherEmails); i++ {
 		queries = append(queries, "SELECT student_email FROM TeacherStudents WHERE teacher_email = ?")
 	}
-	query := strings.Join(queries, " UNION ")
+	query := strings.Join(queries, " INTERSECT ")
 	rows, err := db.Database.QueryContext(
 		context.TODO(),
 		query,
