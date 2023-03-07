@@ -45,9 +45,9 @@ type Database struct {
 }
 
 func Connect(c *Configuration) *Database {
-	connStr := fmt.Sprintf("mysql://%s:%s@tcp(%s:%d)/%s?ssl-mode=disabled", c.Username, c.Password, c.Host, c.Port, c.Name)
+	connStr := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?tls=false", c.Username, c.Password, c.Host, c.Port, c.Name)
 	if c.Password == "" {
-		connStr = fmt.Sprintf("mysql://%s@tcp(%s:%d)/%s?ssl-mode=disabled", c.Username, c.Host, c.Port, c.Name)
+		connStr = fmt.Sprintf("%s@tcp(%s:%d)/%s?tls=false", c.Username, c.Host, c.Port, c.Name)
 	}
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
