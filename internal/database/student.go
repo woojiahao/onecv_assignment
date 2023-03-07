@@ -9,13 +9,11 @@ type Student struct {
 	IsSuspended bool
 }
 
-func (db *Database) CreateStudent(email string) (Student, error) {
-	row := db.Database.QueryRowContext(context.TODO(), `INSERT INTO Students (email) VALUES (?) RETURNING *;`, email)
-	var createdStudent Student
-	err := row.Scan(&createdStudent.Email)
+func (db *Database) CreateStudent(email string) error {
+	_, err := db.Database.ExecContext(context.TODO(), `INSERT INTO Students (email) VALUES (?)`, email)
 	if err != nil {
-		return Student{}, ConflictingStudentsEntry
+		return ConflictingStudentsEntry
 	}
 
-	return createdStudent, nil
+	return nil
 }
