@@ -11,39 +11,48 @@ type Teacher struct {
 	Email string
 }
 
-func (db *Database) CreateTeacher(email string) (Teacher, error) {
-	row := db.Database.QueryRowContext(context.TODO(), `INSERT INTO Teachers VALUES (?) RETURNING *;`, email)
-	var createdTeacher Teacher
-	err := row.Scan(&createdTeacher.Email)
+func (db *Database) CreateTeacher(email string) error {
+	_, err := db.Database.ExecContext(context.TODO(), `INSERT INTO Teachers VALUES (?);`, email)
 	if err != nil {
-		return Teacher{}, ConflictingTeachersEntry
+		return ConflictingTeachersEntry
 	}
 
-	return createdTeacher, nil
+	return nil
 }
 
 func (db *Database) RegisterStudents(teacherEmail string, studentEmails []string) error {
-	var parameters []string
+	var parameters []any
 	var placeholders []string
 	for _, studentEmail := range studentEmails {
-		parameters = append(parameters, []string{teacherEmail, studentEmail}...)
+		parameters = append(parameters, []any{teacherEmail, studentEmail}...)
 		placeholders = append(placeholders, fmt.Sprintf("(?, ?)"))
 	}
 	query := fmt.Sprintf(
-		`INSERT INTO TeacherStudents VALUES %s ON CONFLICT DO NOTHING;`,
+		`INSERT IGNORE INTO TeacherStudents VALUES %s;`,
 		strings.Join(placeholders, ", "),
 	)
-	_, err := db.Database.ExecContext(context.TODO(), query, parameters)
+	_, err := db.Database.ExecContext(context.TODO(), query, parameters...)
 	if err != nil {
+		fmt.Println(err)
 		return DatabaseError
 	}
 
 	return nil
 }
 
-// TODO: Return string of names instead?
-func (db *Database) GetStudents(teacherEmail string) ([]Student, error) {
-	rows, err := db.Database.QueryContext(context.TODO(), `SELECT student_email FROM TeacherStudents WHERE teacher_email = ?;`, teacherEmail)
+func (db *Database) GetStudents(teacherEmails ...string) ([]Student, error) {
+	var queries []string
+	for i := 0; i < len(teacherEmails); i++ {
+		queries = append(queries, "SELECT student_email FROM TeacherStudents WHERE teacher_email = ?")
+	}
+	query := strings.Join(queries, " UNION ")
+	rows, err := db.Database.QueryContext(
+		context.TODO(),
+		query,
+		utility.Map(teacherEmails, func(email string) any {
+			return email
+		})...,
+	)
 	if err != nil {
 		return nil, DatabaseError
 	}
@@ -57,8 +66,15 @@ func (db *Database) GetStudents(teacherEmail string) ([]Student, error) {
 }
 
 func (db *Database) Suspend(studentEmail string) error {
-	row := db.Database.QueryRowContext(context.TODO(), `UPDATE Students SET is_suspended = TRUE WHERE Students.email = ? RETURNING *;`, studentEmail)
-	if row.Scan() != nil {
+	res, err := db.Database.ExecContext(context.TODO(), `UPDATE Students SET is_suspended = TRUE WHERE Students.email = ?;`, studentEmail)
+	if err != nil {
+		return DatabaseError
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return DatabaseError
+	}
+	if affected < 1 {
 		return NoStudentFound
 	}
 
@@ -66,17 +82,21 @@ func (db *Database) Suspend(studentEmail string) error {
 }
 
 func (db *Database) GetNotifiableStudents(teacherEmail, notification string) ([]Student, error) {
+	parameters := []any{teacherEmail}
 	mentions := utility.GetMentionsFromNotification(notification)
-	rows, err := db.Database.QueryContext(
-		context.TODO(),
-		`SELECT Students.email, Students.is_suspended
+	parameters = append(parameters, utility.Map(mentions, func(s string) any {
+		return s
+	})...)
+	fmt.Println(parameters)
+	query := fmt.Sprintf(`SELECT Students.email, Students.is_suspended
 		FROM Students 
 			JOIN TeacherStudents ON student_email = email 
-		WHERE (teacher_email = ? OR student_email IN ?) AND NOT is_suspended
-		`,
-		teacherEmail,
-		mentions)
+		WHERE (teacher_email = ? OR student_email IN (%s)) AND NOT is_suspended
+		`, utility.Repeat("?", len(mentions), ", "))
+	fmt.Println(query)
+	rows, err := db.Database.QueryContext(context.TODO(), query, parameters...)
 	if err != nil {
+		fmt.Println(err)
 		return nil, DatabaseError
 	}
 	var students []Student
