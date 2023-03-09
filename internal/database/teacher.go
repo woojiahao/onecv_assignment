@@ -33,7 +33,6 @@ func (db *Database) RegisterStudents(teacherEmail string, studentEmails []string
 	)
 	_, err := db.Database.ExecContext(context.TODO(), query, parameters...)
 	if err != nil {
-		fmt.Println(err)
 		return DatabaseError
 	}
 
