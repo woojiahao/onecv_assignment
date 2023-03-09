@@ -1,113 +1,56 @@
 package server
 
 import (
-	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/woojiahao/onecv_assignment/internal/database"
-	"github.com/woojiahao/onecv_assignment/internal/utility"
-	"net/http"
+	"log"
 )
+
+type (
+	HttpMethod string
+
+	Server struct {
+		Engine   *gin.Engine
+		Database *database.Database
+	}
+)
+
+const (
+	Post   HttpMethod = "POST"
+	Get    HttpMethod = "GET"
+	Put    HttpMethod = "PUT"
+	Delete HttpMethod = "DELETE"
+)
+
+func (s *Server) Register(method HttpMethod, endpoint string, fn func(*gin.Context, *database.Database)) {
+	s.Engine.Handle(string(method), endpoint, func(context *gin.Context) {
+		fn(context, s.Database)
+	})
+}
+
+func (s *Server) Cors() {
+	s.Engine.Use(cors.Default())
+}
+
+func (s *Server) Start() {
+	err := s.Engine.Run()
+	if err != nil {
+		log.Fatalf("Failed to start server")
+	}
+}
 
 func Start(db *database.Database) {
 	engine := gin.Default()
 
-	engine.POST("/api/teachers", func(context *gin.Context) {
-		var createTeacher CreateTeacherDto
-		if err := context.ShouldBindJSON(&createTeacher); err != nil {
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Invalid input, ensure that email field contains email"})
-			return
-		}
+	server := Server{engine, db}
+	server.Cors()
+	server.Register(Post, "/api/teachers", CreateTeacher)
+	server.Register(Post, "/api/students", CreateStudent)
+	server.Register(Post, "/api/register", RegisterStudents)
+	server.Register(Get, "/api/commonstudents", GetCommonStudents)
+	server.Register(Post, "/api/suspend", SuspendStudent)
+	server.Register(Post, "/api/retrievefornotifications", GetNotifiableStudents)
 
-		err := db.CreateTeacher(createTeacher.Email)
-		if err != nil {
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Duplicate email used for teachers"})
-			return
-		}
-
-		context.Status(http.StatusNoContent)
-	})
-
-	engine.POST("/api/students", func(context *gin.Context) {
-		var createStudent CreateStudentDto
-		if err := context.ShouldBindJSON(&createStudent); err != nil {
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Invalid input, ensure that email field contains email"})
-			return
-		}
-
-		err := db.CreateStudent(createStudent.Email)
-		if err != nil {
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Duplicate email used for students"})
-			return
-		}
-
-		context.Status(http.StatusNoContent)
-	})
-
-	engine.POST("/api/register", func(context *gin.Context) {
-		var registerStudents RegisterStudentsDto
-		if err := context.ShouldBindJSON(&registerStudents); err != nil {
-			fmt.Println(err)
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Invalid input: ensure that all field values are emails"})
-			return
-		}
-		err := db.RegisterStudents(registerStudents.Teacher, registerStudents.Students)
-		if err != nil {
-			context.JSON(http.StatusInternalServerError, ErrorResponse{"Internal Server Error"})
-			return
-		}
-		context.Status(http.StatusNoContent)
-	})
-
-	engine.GET("/api/commonstudents", func(context *gin.Context) {
-		teacherEmails := context.QueryArray("teacher")
-		students, err := db.GetStudents(teacherEmails...)
-		if err != nil {
-			context.JSON(http.StatusInternalServerError, ErrorResponse{"Internal Server Error"})
-			return
-		}
-		context.JSON(http.StatusOK, gin.H{
-			"students": utility.Map(students, func(s database.Student) string {
-				return s.Email
-			}),
-		})
-	})
-
-	engine.POST("/api/suspend", func(context *gin.Context) {
-		var suspend SuspendDto
-		if err := context.ShouldBindJSON(&suspend); err != nil {
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Invalid input: ensure that all field values are emails"})
-			return
-		}
-		err := db.Suspend(suspend.Student)
-		if err != nil && err == database.NoStudentFound {
-			context.JSON(http.StatusNotFound, ErrorResponse{"Student not found"})
-			return
-		} else if err != nil {
-			context.JSON(http.StatusInternalServerError, ErrorResponse{"Internal Server Error"})
-			return
-		}
-
-		context.Status(http.StatusNoContent)
-	})
-
-	engine.POST("/api/retrievefornotifications", func(context *gin.Context) {
-		var retrieveForNotifications RetrieveForNotificationsDto
-		if err := context.ShouldBindJSON(&retrieveForNotifications); err != nil {
-			context.JSON(http.StatusBadRequest, ErrorResponse{"Invalid input: ensure that teacher field value is an email"})
-			return
-		}
-		students, err := db.GetNotifiableStudents(retrieveForNotifications.Teacher, retrieveForNotifications.Notification)
-		if err != nil {
-			context.JSON(http.StatusInternalServerError, ErrorResponse{"Internal Server Error"})
-			return
-		}
-
-		context.JSON(http.StatusOK, gin.H{
-			"recipients": utility.Map(students, func(s database.Student) string {
-				return s.Email
-			}),
-		})
-	})
-
-	engine.Run()
+	server.Start()
 }
