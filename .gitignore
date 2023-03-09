@@ -16,4 +16,5 @@
 
 .idea/
 .env
+.env.compose
 *.iml
