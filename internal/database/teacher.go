@@ -39,7 +39,7 @@ func (db *Database) RegisterStudents(teacherEmail string, studentEmails []string
 	return nil
 }
 
-func (db *Database) GetStudents(teacherEmails ...string) ([]Student, error) {
+func (db *Database) GetCommonStudents(teacherEmails ...string) ([]Student, error) {
 	var queries []string
 	for i := 0; i < len(teacherEmails); i++ {
 		queries = append(queries, "SELECT student_email FROM TeacherStudents WHERE teacher_email = ?")
@@ -59,6 +59,9 @@ func (db *Database) GetStudents(teacherEmails ...string) ([]Student, error) {
 	for rows.Next() {
 		var student Student
 		err = rows.Scan(&student.Email)
+		if err != nil {
+			return nil, DatabaseError
+		}
 		students = append(students, student)
 	}
 	return students, nil

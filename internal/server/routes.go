@@ -57,7 +57,11 @@ func RegisterStudents(context *gin.Context, d *database.Database) {
 
 func GetCommonStudents(context *gin.Context, d *database.Database) {
 	teacherEmails := context.QueryArray("teacher")
-	students, err := d.GetStudents(teacherEmails...)
+	if len(teacherEmails) == 0 {
+		context.JSON(http.StatusBadRequest, ErrorResponse{"Provide at least 1 \"teacher\" query parameter"})
+		return
+	}
+	students, err := d.GetCommonStudents(teacherEmails...)
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, ErrorResponse{"Internal Server Error"})
 		return
