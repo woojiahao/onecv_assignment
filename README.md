@@ -10,6 +10,8 @@ the `POST` body is just an `email` field with a valid email.
 
 ## Deploying locally
 
+### Using Docker
+
 Ensure that you have Docker installed.
 
 Clone the repository
@@ -32,6 +34,42 @@ for `--env-file` as well. Additionally, you will need to edit `Dockerfile` to `m
 
 Once Docker Compose builds the image and starts, the database will be automatically populated with sample data and you
 can test the backend.
+
+```bash
+curl http://localhost:8080/api/commonstudents?teacher=teacherken@gmail.com
+```
+
+### Without Docker
+
+If Docker does not work, then you can manually deploy the backend.
+
+With the repository cloned, edit the `.env.example` and rename it to `.env`.
+
+Create a new database for the backend in MySQL (note that you should be following the details specified in your `.env` file).
+
+```sql
+CREATE DATABASE onecv;
+```
+
+Then initialise the database with the `sql/init.sql` script.
+
+```bash
+$ mysql -u onecv -p onecv < sql/init.sql
+```
+
+Build the backend.
+
+```bash
+go build
+```
+
+Launch the backend.
+
+```bash
+./onecv_assignment
+```
+
+Test the backend.
 
 ```bash
 curl http://localhost:8080/api/commonstudents?teacher=teacherken@gmail.com
