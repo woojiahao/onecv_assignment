@@ -89,17 +89,16 @@ func (db *Database) GetNotifiableStudents(teacherEmail, notification string) ([]
 	})...)
 	query := fmt.Sprintf(`SELECT Students.email, Students.is_suspended
 		FROM Students 
-			JOIN TeacherStudents ON student_email = email 
-		WHERE (teacher_email = ? OR student_email IN (%s)) AND NOT is_suspended
+			LEFT JOIN TeacherStudents ON student_email = email 
+		WHERE (teacher_email = ? OR Students.email IN (%s)) AND NOT is_suspended
 		`, utility.Repeat("?", len(mentions), ", "))
 	if len(parameters) == 1 {
 		query = `SELECT Students.email, Students.is_suspended
 		FROM Students 
-			JOIN TeacherStudents ON student_email = email 
+			LEFT JOIN TeacherStudents ON student_email = email 
 		WHERE (teacher_email = ?) AND NOT is_suspended
 		`
 	}
-
 	rows, err := db.Database.QueryContext(context.TODO(), query, parameters...)
 	if err != nil {
 		return nil, DatabaseError
