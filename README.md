@@ -21,15 +21,15 @@ git clone https://github.com/woojiahao/onecv_assignment.git
 cd onecv_assignment/
 ```
 
-Edit the `.env.example` with your intended database configuration and rename the file to `.env` accordingly.
+Edit the `.env.example` with your intended database configuration and rename the file to `.env.compose` accordingly.
 
 Use Docker Compose to deploy the backend locally
 
 ```bash
-docker compose --env-file .env up
+docker compose --env-file .env.compose up
 ```
 
-Note that if you renamed the `.env.example` to something other than `.env`, you need to change the argument
+Note that if you renamed the `.env.example` to something other than `.env.compose`, you need to change the argument
 for `--env-file` as well. Additionally, you will need to edit `Dockerfile` to `mv <name> .env` on line 9.
 
 Once Docker Compose builds the image and starts, the database will be automatically populated with sample data and you
